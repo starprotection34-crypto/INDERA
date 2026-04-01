@@ -122,8 +122,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const Login = () => {
   const { login } = useContext(AuthContext);
-  const [email, setEmail] = useState("ADMIN");
-  const [password, setPassword] = useState("Star");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -163,12 +163,13 @@ const Login = () => {
           <p className="text-gray-500 text-xs mt-2 font-mono">ENCRYPTION LEVEL: MAXIMUM</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 font-mono">
+        <form onSubmit={handleSubmit} className="space-y-6 font-mono" autoComplete="off">
           <div>
             <label className="block text-[10px] font-bold text-[#E31E24] uppercase tracking-widest mb-2">User Identifier</label>
             <input 
               type="text" 
               required
+              autoComplete="off"
               className="w-full px-4 py-2 bg-black border border-[#E31E24]/30 text-white rounded focus:border-[#E31E24] outline-none transition-colors"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -179,6 +180,7 @@ const Login = () => {
             <input 
               type="password" 
               required
+              autoComplete="new-password"
               className="w-full px-4 py-2 bg-black border border-[#E31E24]/30 text-white rounded focus:border-[#E31E24] outline-none transition-colors"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
