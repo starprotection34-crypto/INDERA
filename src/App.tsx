@@ -121,25 +121,40 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const Login = () => {
-  const { login } = useContext(AuthContext);
+  const { user, login } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (data.success) {
-      login(data.user);
-      navigate("/");
-    } else {
-      setError(data.message);
+    setIsLoggingIn(true);
+    setError("");
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (data.success) {
+        login(data.user);
+        navigate("/");
+      } else {
+        setError(data.message || "Authentication failed");
+      }
+    } catch (err) {
+      setError("Network error. Connection failed.");
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -189,9 +204,17 @@ const Login = () => {
           {error && <p className="text-[#E31E24] text-xs font-bold animate-pulse">{error}</p>}
           <button 
             type="submit"
-            className="w-full py-3 bg-[#E31E24] text-white font-black uppercase tracking-widest rounded hover:bg-[#C2181D] transition-all shadow-[0_0_15px_rgba(227,30,36,0.3)]"
+            disabled={isLoggingIn}
+            className="w-full py-3 bg-[#E31E24] text-white font-black uppercase tracking-widest rounded hover:bg-[#C2181D] transition-all shadow-[0_0_15px_rgba(227,30,36,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Authenticate
+            {isLoggingIn ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                Authenticating...
+              </>
+            ) : (
+              "Authenticate"
+            )}
           </button>
         </form>
         <div className="mt-6 text-center text-[8px] text-gray-600 uppercase tracking-[0.2em]">
@@ -1289,7 +1312,10 @@ export default function App() {
   });
   const [posts, setPosts] = useState<Post[]>([]);
   const [briefings, setBriefings] = useState<any[]>([]);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem("indera-user");
+    return saved ? JSON.parse(saved) : null;
+  });
   const [layout, setLayout] = useState<"list" | "grid">("list");
   const [loading, setLoading] = useState(true);
   const [activeBriefing, setActiveBriefing] = useState<any | null>(null);
@@ -1314,8 +1340,14 @@ export default function App() {
     fetchData();
   }, []);
 
-  const login = (u: User) => setUser(u);
-  const logout = () => setUser(null);
+  const login = (u: User) => {
+    setUser(u);
+    localStorage.setItem("indera-user", JSON.stringify(u));
+  };
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("indera-user");
+  };
   const addBriefing = async (b: any) => {
     try {
       const res = await fetch("/api/briefings", {
