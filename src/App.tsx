@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom";
-import { Search, Menu, X, Shield, Calendar, FileText, Users, Settings, Home as HomeIcon, ChevronRight, Grid, List as ListIcon, Lock, LogOut, Upload, MapPin, Activity, Cpu, Database, Eye, File, FileImage, FileSpreadsheet, Presentation } from "lucide-react";
+import { Search, Menu, X, Shield, Calendar, FileText, Users, Settings, Home as HomeIcon, ChevronRight, Grid, List as ListIcon, Lock, LogOut, Upload, MapPin, Activity, Cpu, Database, Eye, File, FileImage, FileSpreadsheet, Presentation, AlertCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GoogleGenAI } from "@google/genai";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
@@ -80,6 +80,52 @@ const CMSContext = createContext<{
 
 // --- Components ---
 
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null
+  };
+
+  public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#050505] p-4 font-mono">
+          <div className="max-w-md w-full border border-[#E31E24]/30 bg-[#0A0A0A] p-8 rounded-lg text-center">
+            <AlertCircle className="mx-auto text-[#E31E24] mb-4" size={48} />
+            <h2 className="text-xl font-black text-white uppercase tracking-widest mb-4">System Malfunction</h2>
+            <p className="text-gray-500 text-sm mb-6">An unexpected error has occurred in the neural link. The incident has been logged.</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-[#E31E24] text-white text-xs font-black uppercase tracking-widest rounded hover:bg-[#ff2a30] transition-all flex items-center gap-2 mx-auto"
+            >
+              <RefreshCw size={14} /> Re-establish Connection
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (this as any).props.children;
+  }
+}
+
 const InderaLogo = ({ className = "" }: { className?: string }) => (
   <div className={`flex items-center bg-black p-1 select-none ${className}`}>
     {/* Left Box with red D */}
@@ -132,28 +178,55 @@ const Login = () => {
     if (user) {
       navigate("/", { replace: true });
     }
+    
+    // Test API connectivity
+    fetch("/api/cms")
+      .then(r => {
+        console.log("API Connectivity Test Status:", r.status);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(() => console.log("API Connectivity Test: SUCCESS"))
+      .catch(err => console.error("API Connectivity Test: FAILED", err));
   }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
     setError("");
+    
     try {
+      console.log("Initiating authentication request to /api/login");
       const res = await fetch("/api/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({ email, password })
       });
-      const data = await res.json();
-      if (data.success) {
+      
+      console.log("Authentication response status:", res.status);
+      
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        console.error("Failed to parse response as JSON:", text);
+        setError(`Server communication error (Status: ${res.status})`);
+        return;
+      }
+
+      if (res.ok && data.success) {
         login(data.user);
         navigate("/");
       } else {
-        setError(data.message || "Authentication failed");
+        setError(data.message || `Authentication failed (Status: ${res.status})`);
       }
-    } catch (err) {
-      console.error("Login connection error:", err);
-      setError("Network error. Connection failed.");
+    } catch (err: any) {
+      console.error("Login connection error details:", err);
+      setError(`Connection failed: ${err.message || "The server could not be reached"}`);
     } finally {
       setIsLoggingIn(false);
     }
@@ -1375,42 +1448,44 @@ export default function App() {
   );
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
-      <CMSContext.Provider value={{ 
-        config, 
-        posts, 
-        updateConfig: setConfig, 
-        updatePosts: setPosts,
-        layout,
-        setLayout,
-        briefings,
-        addBriefing,
-        setActiveBriefing
-      }}>
-        <Router>
-          <div className="min-h-screen flex flex-col bg-[#050505] text-gray-100" style={{ fontFamily: config.fontFamily }}>
-            <Navbar />
-            <main className="flex-1">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/programme" element={<ProgrammeOfWork />} />
-                <Route path="/decisions" element={<DecisionsAndOutcomes />} />
-                <Route path="/meetings" element={<MeetingsAndDocuments />} />
-                <Route path="/portal" element={<ProtectedRoute><Portal /></ProtectedRoute>} />
-                <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
-          <AnimatePresence>
-            {activeBriefing && (
-              <BriefingScreen briefing={activeBriefing} onClose={() => setActiveBriefing(null)} />
-            )}
-          </AnimatePresence>
-        </Router>
-      </CMSContext.Provider>
-    </AuthContext.Provider>
+    <ErrorBoundary>
+      <AuthContext.Provider value={{ user, login, logout }}>
+        <CMSContext.Provider value={{ 
+          config, 
+          posts, 
+          updateConfig: setConfig, 
+          updatePosts: setPosts,
+          layout,
+          setLayout,
+          briefings,
+          addBriefing,
+          setActiveBriefing
+        }}>
+          <Router>
+            <div className="min-h-screen flex flex-col bg-[#050505] text-gray-100" style={{ fontFamily: config.fontFamily }}>
+              <Navbar />
+              <main className="flex-1">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/programme" element={<ProgrammeOfWork />} />
+                  <Route path="/decisions" element={<DecisionsAndOutcomes />} />
+                  <Route path="/meetings" element={<MeetingsAndDocuments />} />
+                  <Route path="/portal" element={<ProtectedRoute><Portal /></ProtectedRoute>} />
+                  <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+            <AnimatePresence>
+              {activeBriefing && (
+                <BriefingScreen briefing={activeBriefing} onClose={() => setActiveBriefing(null)} />
+              )}
+            </AnimatePresence>
+          </Router>
+        </CMSContext.Provider>
+      </AuthContext.Provider>
+    </ErrorBoundary>
   );
 }

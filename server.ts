@@ -49,18 +49,28 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(cors());
+  // Basic middleware first
   app.use(express.json());
+  app.use(cors());
   app.use("/uploads", express.static(UPLOADS_DIR));
 
   // Auth API
   app.post("/api/login", (req, res) => {
-    const { email, password } = req.body;
-    console.log(`Login attempt: ${email}`);
+    console.log("Received login request:", req.body);
+    const { email, password } = req.body || {};
+    
+    if (!email || !password) {
+      console.warn("Login attempt with missing credentials");
+      return res.status(400).json({ success: false, message: "Missing credentials" });
+    }
+
+    console.log(`Login attempt for: ${email}`);
     // Simple hardcoded auth for demonstration
     if (email === "ADMIN" && password === "Star") {
+      console.log("Login successful");
       res.json({ success: true, user: { email, role: "admin" } });
     } else {
+      console.warn("Login failed: Invalid credentials");
       res.status(401).json({ success: false, message: "Invalid credentials" });
     }
   });
@@ -139,6 +149,16 @@ async function startServer() {
       });
     }
   }
+
+  // Error handling middleware
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("SERVER ERROR:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal Server Error",
+      error: process.env.NODE_ENV === "production" ? "An unexpected error occurred" : err.message
+    });
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
