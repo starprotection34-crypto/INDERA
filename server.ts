@@ -1,0 +1,138 @@
+import express from "express";
+import { createServer as createViteServer } from "vite";
+import path from "path";
+import fs from "fs";
+import cors from "cors";
+import multer from "multer";
+
+const DATA_DIR = path.join(process.cwd(), "data");
+const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+const CMS_FILE = path.join(DATA_DIR, "cms.json");
+const POSTS_FILE = path.join(DATA_DIR, "posts.json");
+const BRIEFINGS_FILE = path.join(DATA_DIR, "briefings.json");
+
+// Ensure data and uploads directories exist
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
+
+if (!fs.existsSync(BRIEFINGS_FILE)) {
+  fs.writeFileSync(BRIEFINGS_FILE, JSON.stringify([]));
+}
+if (!fs.existsSync(CMS_FILE)) {
+  fs.writeFileSync(CMS_FILE, JSON.stringify({
+    siteName: "INDERA - Intelligence, Defense Research and Analysis",
+    logoText: "INDERA",
+    primaryColor: "#E31E24",
+    secondaryColor: "#050505",
+    fontFamily: "JetBrains Mono",
+    footerText: "© 2026 INDERA - Intelligence, Defense Research and Analysis. All rights reserved."
+  }));
+}
+if (!fs.existsSync(POSTS_FILE)) {
+  fs.writeFileSync(POSTS_FILE, JSON.stringify([
+    { id: 1, title: "New Addition to Sanctions List", content: "The committee has added QDi.436 to the list.", date: "2026-03-25" },
+    { id: 2, title: "Annual Review Completed", content: "The annual review of the 1267 list has been finalized.", date: "2026-03-10" }
+  ]));
+}
+
+// Multer configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, UPLOADS_DIR);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+const upload = multer({ storage });
+
+async function startServer() {
+  const app = express();
+  const PORT = 3000;
+
+  app.use(cors());
+  app.use(express.json());
+  app.use("/uploads", express.static(UPLOADS_DIR));
+
+  // Auth API
+  app.post("/api/login", (req, res) => {
+    const { email, password } = req.body;
+    // Simple hardcoded auth for demonstration
+    if (email === "ADMIN" && password === "Star") {
+      res.json({ success: true, user: { email, role: "admin" } });
+    } else {
+      res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+  });
+
+  // File Upload API
+  app.post("/api/upload", upload.array("files"), (req, res) => {
+    const files = (req.files as Express.Multer.File[]).map(file => ({
+      name: file.originalname,
+      path: `/uploads/${file.filename}`,
+      type: file.mimetype
+    }));
+    res.json({ success: true, files });
+  });
+
+  // Briefings API
+  app.get("/api/briefings", (req, res) => {
+    const data = JSON.parse(fs.readFileSync(BRIEFINGS_FILE, "utf-8"));
+    res.json(data);
+  });
+
+  app.post("/api/briefings", (req, res) => {
+    const briefings = JSON.parse(fs.readFileSync(BRIEFINGS_FILE, "utf-8"));
+    const newBriefing = {
+      id: Date.now(),
+      ...req.body,
+      timestamp: new Date().toISOString()
+    };
+    briefings.push(newBriefing);
+    fs.writeFileSync(BRIEFINGS_FILE, JSON.stringify(briefings, null, 2));
+    res.json(newBriefing);
+  });
+
+  // CMS API
+  app.get("/api/cms", (req, res) => {
+    const data = JSON.parse(fs.readFileSync(CMS_FILE, "utf-8"));
+    res.json(data);
+  });
+
+  app.post("/api/cms", (req, res) => {
+    fs.writeFileSync(CMS_FILE, JSON.stringify(req.body, null, 2));
+    res.json({ success: true });
+  });
+
+  // Posts API
+  app.get("/api/posts", (req, res) => {
+    const data = JSON.parse(fs.readFileSync(POSTS_FILE, "utf-8"));
+    res.json(data);
+  });
+
+  app.post("/api/posts", (req, res) => {
+    fs.writeFileSync(POSTS_FILE, JSON.stringify(req.body, null, 2));
+    res.json({ success: true });
+  });
+
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();
