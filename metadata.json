@@ -1,5 +1,5 @@
 {
-  "name": "International Searchers Portal",
-  "description": "A professional search portal for international sanctions lists, replicating the UN Security Council layout.",
+  "name": "SecureAuth Dashboard",
+  "description": "A robust authentication system with ID and password login, featuring a secure dashboard and real-time Firestore integration.",
   "requestFramePermissions": []
 }
