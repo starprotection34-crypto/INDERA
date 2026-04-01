@@ -180,6 +180,11 @@ const Login = () => {
     }
     
     // Test API connectivity
+    fetch("/api/ping")
+      .then(r => r.json())
+      .then(d => console.log("API Ping SUCCESS:", d))
+      .catch(err => console.error("API Ping FAILED:", err));
+
     fetch("/api/cms")
       .then(r => {
         console.log("API Connectivity Test Status:", r.status);
@@ -196,8 +201,9 @@ const Login = () => {
     setError("");
     
     try {
-      console.log("Initiating authentication request to /api/login");
-      const res = await fetch("/api/login", {
+      const fullUrl = `${window.location.origin}/api/login`;
+      console.log(`Initiating authentication request to: ${fullUrl}`);
+      const res = await fetch(fullUrl, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

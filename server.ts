@@ -50,11 +50,24 @@ async function startServer() {
   const PORT = 3000;
 
   // Basic middleware first
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
   app.use(express.json());
-  app.use(cors());
+  app.use(cors({ origin: true, credentials: true }));
   app.use("/uploads", express.static(UPLOADS_DIR));
 
+  app.get("/api/ping", (req, res) => {
+    res.json({ status: "ok", time: new Date().toISOString() });
+  });
+
   // Auth API
+  app.get("/api/login", (req, res) => {
+    console.warn("Received GET request to /api/login - this should be a POST");
+    res.status(405).json({ success: false, message: "Method Not Allowed. Please use POST." });
+  });
+
   app.post("/api/login", (req, res) => {
     console.log("Received login request:", req.body);
     const { email, password } = req.body || {};
@@ -123,6 +136,12 @@ async function startServer() {
   app.post("/api/posts", (req, res) => {
     fs.writeFileSync(POSTS_FILE, JSON.stringify(req.body, null, 2));
     res.json({ success: true });
+  });
+
+  // Catch-all for unmatched API routes
+  app.all("/api/*", (req, res) => {
+    console.warn(`UNMATCHED API ROUTE: ${req.method} ${req.url}`);
+    res.status(404).json({ success: false, message: `API Route not found: ${req.method} ${req.url}` });
   });
 
   // Vite middleware for development
