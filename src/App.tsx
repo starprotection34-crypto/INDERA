@@ -152,6 +152,7 @@ const Login = () => {
         setError(data.message || "Authentication failed");
       }
     } catch (err) {
+      console.error("Login connection error:", err);
       setError("Network error. Connection failed.");
     } finally {
       setIsLoggingIn(false);

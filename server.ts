@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
@@ -57,6 +56,7 @@ async function startServer() {
   // Auth API
   app.post("/api/login", (req, res) => {
     const { email, password } = req.body;
+    console.log(`Login attempt: ${email}`);
     // Simple hardcoded auth for demonstration
     if (email === "ADMIN" && password === "Star") {
       res.json({ success: true, user: { email, role: "admin" } });
@@ -117,17 +117,27 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    console.log("Starting in development mode with Vite...");
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
+    console.log("Starting in production mode...");
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    } else {
+      console.error("Production build not found. Please run 'npm run build' first.");
+      app.get("*", (req, res) => {
+        res.status(500).send("Production build not found. Please run 'npm run build' first.");
+      });
+    }
   }
 
   app.listen(PORT, "0.0.0.0", () => {
@@ -135,4 +145,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("CRITICAL: Failed to start server:", err);
+  process.exit(1);
+});
