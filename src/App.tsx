@@ -556,8 +556,11 @@ const Navbar = () => {
                 <Link to="/admin" className="p-2 text-gray-400 hover:text-[#E31E24] transition-colors">
                   <Settings size={20} />
                 </Link>
-                <button onClick={logout} className="p-2 text-gray-400 hover:text-[#E31E24] transition-colors">
-                  <LogOut size={20} />
+                <button 
+                  onClick={logout} 
+                  className="px-4 py-2 border border-gray-800 text-gray-400 text-[10px] font-black uppercase tracking-widest rounded hover:text-[#E31E24] hover:border-[#E31E24]/30 transition-all flex items-center gap-2"
+                >
+                  <LogOut size={14} /> Logout
                 </button>
               </div>
             ) : (
@@ -876,6 +879,7 @@ const MeetingsAndDocuments = () => (
 );
 
 const Portal = () => {
+  const { user, logout } = useContext(AuthContext);
   const { layout, setLayout, briefings, setActiveBriefing } = useContext(CMSContext);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"sanctions" | "briefings">("sanctions");
@@ -903,26 +907,30 @@ const Portal = () => {
     <div className="max-w-7xl mx-auto px-4 py-12 relative">
       <div className="sci-fi-grid absolute inset-0 opacity-5 pointer-events-none"></div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 relative z-10">
-        <div className="flex items-center gap-6">
-          <InderaLogo className="scale-90 origin-left" />
-          <div className="h-12 w-px bg-[#E31E24]/20 hidden md:block"></div>
-          <div>
-            <h1 className="text-4xl font-black text-white tracking-widest uppercase text-glow-red">Intelligence Portal</h1>
-            <p className="text-gray-500 font-mono text-xs mt-2">Access consolidated sanctions data and strategic briefings.</p>
-          </div>
+        <div>
+          <h1 className="text-4xl font-black text-white tracking-widest uppercase text-glow-red">Intelligence Portal</h1>
+          <p className="text-gray-500 font-mono text-xs mt-2">Access consolidated sanctions data and strategic briefings.</p>
         </div>
-        <div className="flex bg-[#0A0A0A] p-1 rounded border border-[#E31E24]/30">
+        <div className="flex items-center gap-4">
+          <div className="flex bg-[#0A0A0A] p-1 rounded border border-[#E31E24]/30">
+            <button 
+              onClick={() => setLayout("list")}
+              className={`p-2 rounded transition-all ${layout === "list" ? "bg-[#E31E24] text-white shadow-lg" : "text-gray-500 hover:text-white"}`}
+            >
+              <ListIcon size={20} />
+            </button>
+            <button 
+              onClick={() => setLayout("grid")}
+              className={`p-2 rounded transition-all ${layout === "grid" ? "bg-[#E31E24] text-white shadow-lg" : "text-gray-500 hover:text-white"}`}
+            >
+              <Grid size={20} />
+            </button>
+          </div>
           <button 
-            onClick={() => setLayout("list")}
-            className={`p-2 rounded transition-all ${layout === "list" ? "bg-[#E31E24] text-white shadow-lg" : "text-gray-500 hover:text-white"}`}
+            onClick={logout} 
+            className="px-4 py-2 border border-[#E31E24]/30 text-[#E31E24] text-[10px] font-black uppercase tracking-widest rounded hover:bg-[#E31E24]/10 transition-all flex items-center gap-2"
           >
-            <ListIcon size={20} />
-          </button>
-          <button 
-            onClick={() => setLayout("grid")}
-            className={`p-2 rounded transition-all ${layout === "grid" ? "bg-[#E31E24] text-white shadow-lg" : "text-gray-500 hover:text-white"}`}
-          >
-            <Grid size={20} />
+            <LogOut size={14} /> Logout
           </button>
         </div>
       </div>
@@ -1016,6 +1024,7 @@ const Portal = () => {
 };
 
 const Admin = () => {
+  const { user, logout } = useContext(AuthContext);
   const { config, updateConfig, addBriefing } = useContext(CMSContext);
   const [activeTab, setActiveTab] = useState<"briefing" | "config">("briefing");
   
@@ -1078,13 +1087,17 @@ const Admin = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 relative">
       <div className="sci-fi-grid absolute inset-0 opacity-5 pointer-events-none"></div>
-      <div className="flex items-center gap-6 mb-12 relative z-10">
-        <InderaLogo className="scale-90 origin-left" />
-        <div className="h-12 w-px bg-[#E31E24]/20 hidden md:block"></div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 relative z-10">
         <div>
           <h1 className="text-4xl font-black text-white tracking-widest uppercase text-glow-red">Command Center</h1>
           <p className="text-gray-500 font-mono text-xs mt-2">Manage division configuration and intelligence data.</p>
         </div>
+        <button 
+          onClick={logout} 
+          className="px-4 py-2 border border-[#E31E24]/30 text-[#E31E24] text-[10px] font-black uppercase tracking-widest rounded hover:bg-[#E31E24]/10 transition-all flex items-center gap-2"
+        >
+          <LogOut size={14} /> Logout
+        </button>
       </div>
 
       <div className="flex gap-4 mb-8 border-b border-gray-800 relative z-10">
